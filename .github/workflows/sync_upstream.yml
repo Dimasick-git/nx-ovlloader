@@ -26,13 +26,14 @@ jobs:
       - name: Add upstream remote
         run: |
           git remote add upstream https://github.com/ppkantorski/nx-ovlloader.git
-          git fetch upstream main
+          git fetch upstream master
 
       - name: Check if upstream has new commits
         id: check
         run: |
-          UPSTREAM_HEAD=$(git rev-parse upstream/main)
+          UPSTREAM_HEAD=$(git rev-parse upstream/master)
           OUR_HEAD=$(git rev-parse origin/main)
+          echo "our_head=$OUR_HEAD" >> $GITHUB_OUTPUT
           # Количество новых коммитов в upstream, которых нет у нас.
           NEW_COUNT=$(git log --oneline ${OUR_HEAD}..${UPSTREAM_HEAD} 2>/dev/null | wc -l || echo 0)
           echo "new_count=$NEW_COUNT" >> $GITHUB_OUTPUT
@@ -69,7 +70,7 @@ jobs:
         run: |
           # Сохраняем нашу README и workflows -- они уже rebrand'нуты.
           set +e
-          git merge --no-edit upstream/main -X ours
+          git merge --no-edit upstream/master -X ours
           MERGE_RC=$?
           if [ $MERGE_RC -ne 0 ]; then
             # Конфликт. Сохраняем как partial state, PR описывает что
@@ -78,7 +79,8 @@ jobs:
             echo "conflict=true" >> $GITHUB_OUTPUT
             # Делаем patch-only коммит со списком upstream-коммитов
             # как референс.
-            git log --oneline ${OUR_HEAD}..upstream/main > /tmp/upstream_log.txt 2>/dev/null || true
+            OUR_HEAD="${{ steps.check.outputs.our_head }}"
+            git log --oneline ${OUR_HEAD}..upstream/master > /tmp/upstream_log.txt 2>/dev/null || true
             exit 0
           fi
           echo "conflict=false" >> $GITHUB_OUTPUT
@@ -120,7 +122,7 @@ jobs:
         run: |
           gh issue create \
             --title "sync: upstream merge conflict (manual resolution required)" \
-            --body "Авто-merge с upstream/main упал из-за конфликта.
+            --body "Авто-merge с upstream/master упал из-за конфликта.
           Upstream HEAD: \`${{ steps.check.outputs.upstream_head }}\`
           Новых коммитов: ${{ steps.check.outputs.new_count }}
 
@@ -129,7 +131,7 @@ jobs:
           git fetch upstream
           git checkout main
           git checkout -b sync/upstream-manual
-          git merge upstream/main
+          git merge upstream/master
           # разрулить конфликты, оставив наши README/workflows
           git push origin sync/upstream-manual
           \`\`\`
