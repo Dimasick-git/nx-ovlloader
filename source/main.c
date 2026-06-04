@@ -15,6 +15,7 @@ const char g_noticeText[] =
     "What gives an idea power? Its origin? Its truth? Its reach? No. Its ability to collapse, reassemble, and still mean the same thing.";
 
 static char g_argv[1024];
+_Static_assert(sizeof(DEFAULT_NRO) <= 1024, "DEFAULT_NRO path exceeds g_argv buffer size");
 static char g_nextArgv[1024];
 static char g_nextNroPath[512];
 u64  g_nroAddr = 0;
@@ -83,7 +84,7 @@ void __libnx_initheap(void) {
 
 // Fast inline heap size validator
 static inline bool isValidHeapSize(u64 size) {
-    constexpr u64 twoMB = 0x200000;
+    const u64 twoMB = 0x200000ULL;
     return size != twoMB && size % twoMB == 0;
 }
 
@@ -405,6 +406,10 @@ void loadNro(void) {
     if (R_FAILED(rc)) {
         // Clear flag before exiting on error
         __atomic_clear(&g_loading, __ATOMIC_SEQ_CST);
+        if (g_sdmc_initialized) {
+            fsFsClose(&g_sdmc);
+            g_sdmc_initialized = false;
+        }
         exit(1);
     }
 
@@ -463,11 +468,14 @@ void loadNro(void) {
     } else {
         // Mapping failed (window wrapped and old addresses not reclaimed yet)
         // Fall back to random search
+        int _retry = 0;
         do {
+            if (++_retry > 256)
+                fatalThrow(MAKERESULT(Module_HomebrewLoader, 18));
             map_addr = randomGet64() & 0xFFFFFF000ull;
             rc = svcMapProcessCodeMemory(g_procHandle, map_addr, (u64)nrobuf, total_size);
         } while (R_FAILED(rc) && (rc == 0xDC01 || rc == 0xD401));
-        
+
         if (R_FAILED(rc))
             fatalThrow(MAKERESULT(Module_HomebrewLoader, 18));
         
