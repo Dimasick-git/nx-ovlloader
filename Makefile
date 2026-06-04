@@ -161,8 +161,12 @@ all: $(BUILD) reloader
 	@cp $(CURDIR)/toolbox.json out/atmosphere/contents/420000000007E51A/toolbox.json
 	@cp $(CURDIR)/$(TARGET).nsp out/atmosphere/contents/420000000007E51A/exefs.nsp
 	
-	@echo "Copying nx-ovlreloader components..."
+	@echo "Copying nx-ovlreloader components (rebranded Ryazhahand Reload)..."
 	@cp -r $(RELOADER_DIR)/out/switch out/
+	@if [ -d out/switch/Ultrahand-Reload ]; then \
+		mv out/switch/Ultrahand-Reload out/switch/Ryazhahand-Reload; \
+		mv out/switch/Ryazhahand-Reload/Ultrahand-Reload.nro out/switch/Ryazhahand-Reload/Ryazhahand-Reload.nro; \
+	fi
 	@cp -r $(RELOADER_DIR)/out/atmosphere/contents/420000000007E51B out/atmosphere/contents/
 	
 	@echo ""
@@ -177,9 +181,10 @@ $(BUILD):
 
 reloader:
 	@echo "================================================"
-	@echo "Building nx-ovlreloader..."
+	@echo "Building nx-ovlreloader (Ryazhahand Reload)..."
 	@echo "================================================"
-	@$(MAKE) --no-print-directory -C $(RELOADER_DIR) all
+	@cp -f $(CURDIR)/reloader_icon.jpg $(RELOADER_DIR)/icon.jpg
+	@$(MAKE) --no-print-directory -C $(RELOADER_DIR) all APP_TITLE="Ryazhahand Reload" APP_AUTHOR="Dimasick-git"
 
 #---------------------------------------------------------------------------------
 clean:
