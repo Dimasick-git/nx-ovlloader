@@ -15,7 +15,7 @@ BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
-APP_VERSION	:=	2.0.2
+APP_VERSION	:=	2.0.3
 
 # Path to nx-ovlreloader
 RELOADER_DIR := external/nx-ovlreloader
@@ -26,19 +26,17 @@ RELOADER_DIR := external/nx-ovlreloader
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 # Balanced performance compiler flags
-CFLAGS	:=	-g -Wall -Os -ffunction-sections -fdata-sections \
-			-ffast-math -fomit-frame-pointer -fno-stack-protector \
-			-flto -ffat-lto-objects \
-            -fuse-linker-plugin -finline-small-functions \
-            -fno-strict-aliasing -frename-registers -falign-functions=16 \
-			$(ARCH) $(DEFINES)
+CFLAGS := -g -Wall -Os -ffunction-sections -fdata-sections \
+          -fomit-frame-pointer -fno-stack-protector \
+          -fno-strict-aliasing -falign-functions=16 \
+          $(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -DVERSION=\"v$(APP_VERSION)\" -DNDEBUG
 
 BUILD_LOADER_PLUS_DIRECTIVE := 0
 CFLAGS += -DBUILD_LOADER_PLUS_DIRECTIVE=$(BUILD_LOADER_PLUS_DIRECTIVE)
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -fvisibility-inlines-hidden
+#CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -fvisibility-inlines-hidden
 
 ASFLAGS	:=	-g $(ARCH)
 
