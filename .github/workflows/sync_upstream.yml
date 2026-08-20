@@ -1,139 +1,54 @@
 name: Sync from ppkantorski/nx-ovlloader
 
-# Каждые 24 часа подтягиваем новые коммиты от upstream и открываем PR,
-# если есть что мерджить. Запускается также вручную через UI Actions
-# или `gh workflow run sync_upstream.yml`.
+# Ежедневно проверяем upstream. Если появились новые коммиты, они сразу
+# вливаются в main одной merge-записью: без временных веток и без PR.
+# Ручной запуск доступен на вкладке Actions.
 
 on:
   schedule:
-    - cron: '17 4 * * *'   # 04:17 UTC ежедневно
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: write
+
+concurrency:
+  group: sync-nx-ovlloader-upstream
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout our main
+      - name: Checkout main with complete history
         uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
           submodules: false
 
-      - name: Add upstream remote
+      - name: Fetch upstream
         run: |
           git remote add upstream https://github.com/ppkantorski/nx-ovlloader.git
-          git fetch upstream master
+          git fetch --no-tags upstream master
 
-      - name: Check if upstream has new commits
-        id: check
+      - name: Merge new upstream commits into main
+        env:
+          UPSTREAM_URL: https://github.com/ppkantorski/nx-ovlloader.git
         run: |
-          UPSTREAM_HEAD=$(git rev-parse upstream/master)
-          OUR_HEAD=$(git rev-parse origin/main)
-          echo "our_head=$OUR_HEAD" >> $GITHUB_OUTPUT
-          # Количество новых коммитов в upstream, которых нет у нас.
-          NEW_COUNT=$(git log --oneline ${OUR_HEAD}..${UPSTREAM_HEAD} 2>/dev/null | wc -l || echo 0)
-          echo "new_count=$NEW_COUNT" >> $GITHUB_OUTPUT
-          echo "upstream_head=$UPSTREAM_HEAD" >> $GITHUB_OUTPUT
-          echo "[sync] upstream HEAD: $UPSTREAM_HEAD"
-          echo "[sync] our HEAD: $OUR_HEAD"
-          echo "[sync] new commits: $NEW_COUNT"
+          set -euo pipefail
 
-      - name: Bail if nothing to sync
-        if: steps.check.outputs.new_count == '0'
-        run: |
-          echo "Nothing to sync — upstream и наш main совпадают."
-          exit 0
-
-      - name: Configure git
-        if: steps.check.outputs.new_count != '0'
-        run: |
           git config user.name "Dimasick-git"
           git config user.email "dimaorynchukk@gmail.com"
 
-      - name: Create sync branch
-        if: steps.check.outputs.new_count != '0'
-        id: branch
-        run: |
-          UPSTREAM_SHORT="${{ steps.check.outputs.upstream_head }}"
-          UPSTREAM_SHORT=${UPSTREAM_SHORT:0:7}
-          BRANCH="sync/upstream-${UPSTREAM_SHORT}-$(date -u +%Y%m%d)"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          git checkout -b "$BRANCH"
-
-      - name: Merge upstream
-        if: steps.check.outputs.new_count != '0'
-        id: merge
-        run: |
-          # Сохраняем нашу README и workflows -- они уже rebrand'нуты.
-          set +e
-          git merge --no-edit upstream/master -X ours
-          MERGE_RC=$?
-          if [ $MERGE_RC -ne 0 ]; then
-            # Конфликт. Сохраняем как partial state, PR описывает что
-            # требует ручного разрешения.
-            git merge --abort 2>/dev/null
-            echo "conflict=true" >> $GITHUB_OUTPUT
-            # Делаем patch-only коммит со списком upstream-коммитов
-            # как референс.
-            OUR_HEAD="${{ steps.check.outputs.our_head }}"
-            git log --oneline ${OUR_HEAD}..upstream/master > /tmp/upstream_log.txt 2>/dev/null || true
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "No new upstream commits."
             exit 0
           fi
-          echo "conflict=false" >> $GITHUB_OUTPUT
 
-      - name: Push branch
-        if: steps.check.outputs.new_count != '0' && steps.merge.outputs.conflict == 'false'
-        run: |
-          git push origin "${{ steps.branch.outputs.branch }}"
-
-      - name: Open PR
-        if: steps.check.outputs.new_count != '0' && steps.merge.outputs.conflict == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          UPSTREAM_HEAD="${{ steps.check.outputs.upstream_head }}"
-          COUNT="${{ steps.check.outputs.new_count }}"
-          BODY="Авто-sync с ppkantorski/nx-ovlloader.
-
-          Upstream HEAD: \`$UPSTREAM_HEAD\`
-          Новых коммитов: $COUNT
-
-          ## Что было замерджено
-          $(git log --oneline --no-merges HEAD~${COUNT}..HEAD)
-
-          Merge стратегия: \`-X ours\` -- наши README/workflows/branding
-          остаются нетронутыми, upstream-изменения сабжа кода идут
-          поверх. Review the diff carefully перед merge."
-
-          gh pr create \
-            --base main \
-            --head "${{ steps.branch.outputs.branch }}" \
-            --title "sync: upstream $COUNT new commit(s) до ${UPSTREAM_HEAD:0:7}" \
-            --body "$BODY"
-
-      - name: Open conflict-tracker issue
-        if: steps.check.outputs.new_count != '0' && steps.merge.outputs.conflict == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue create \
-            --title "sync: upstream merge conflict (manual resolution required)" \
-            --body "Авто-merge с upstream/master упал из-за конфликта.
-          Upstream HEAD: \`${{ steps.check.outputs.upstream_head }}\`
-          Новых коммитов: ${{ steps.check.outputs.new_count }}
-
-          Нужна ручная разруливалка:
-          \`\`\`sh
-          git fetch upstream
-          git checkout main
-          git checkout -b sync/upstream-manual
-          git merge upstream/master
-          # разрулить конфликты, оставив наши README/workflows
-          git push origin sync/upstream-manual
-          \`\`\`
-          " \
-            --label "auto-sync,needs-manual-merge"
+          echo "Merging $(git rev-parse --short upstream/master) from $UPSTREAM_URL into main."
+          # При конфликте предпочтение остаётся за пользовательскими файлами
+          # (branding, README и workflow); остальные изменения upstream входят
+          # в обычный merge и видны в истории main.
+          git merge --no-edit -X ours upstream/master
+          git push origin HEAD:main
