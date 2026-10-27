@@ -1,6 +1,6 @@
 # nx-ovlloader (Ryazha edition)
 
-**EN:** Sysmodule that chainloads Tesla overlay menus on Nintendo Switch. Fork of [ppkantorski/nx-ovlloader](https://github.com/ppkantorski/nx-ovlloader) adapted for the Ryazha ecosystem (Ryazhahand-Overlay, RCU, libryazhahand). Functionality identical to upstream — title ID and manifest preserved. License: ISC. HOS 16.0.0+.
+**EN:** Sysmodule that chainloads Tesla overlay menus on Nintendo Switch. Fork of [ppkantorski/nx-ovlloader](https://github.com/ppkantorski/nx-ovlloader) adapted for the Ryazha ecosystem (Ryazhahand-Overlay, RCU, libryazhahand). Adds the Applet memory pool, Applet program type and display-register mapping required by deko3d glass overlays; title ID is preserved. License: ISC. HOS 16.0.0+.
 
 ---
 
@@ -8,7 +8,7 @@
 
 Core-загрузчик sysmodule для Tesla-совместимых overlay-меню. Стартует с консолью, маппит overlay NRO в память и chainload'ит `/switch/.overlays/ovlmenu.ovl`. Без него Tesla-overlay не запустится.
 
-Этот репозиторий — форк ppkantorski/nx-ovlloader. Функционал идентичен upstream'у — title ID `420000000007E51A`, sysmodule manifest и DMA-layout сохранены, любая Tesla-совместимая `ovlmenu.ovl` грузится корректно.
+Этот репозиторий — форк ppkantorski/nx-ovlloader. Title ID `420000000007E51A` сохранён. Manifest использует пул и тип Applet и доступ к регистрам дисплея для оверлеев deko3d. Используйте Ryzhand 2.5.2 и оверлеи `-deko3d` с событиями UEvent; старые версии на событиях ядра требуют обновления.
 
 ## Отличия от upstream
 
@@ -38,7 +38,7 @@ export DEVKITPRO=/opt/devkitpro
 make
 ```
 
-Результат — `out/nx-ovlloader.nsp`. Бинарь идентичен upstream'у при том же source-tree.
+Результат — SD-структура в `out/`; `make dist` создаёт `nx-ovlloader.zip`. Права скомпилированного NPDM проверяются перед упаковкой.
 
 ## Лицензия
 

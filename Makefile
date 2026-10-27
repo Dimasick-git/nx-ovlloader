@@ -16,6 +16,7 @@ SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
 APP_VERSION	:=	2.0.3
+PYTHON ?= python3
 
 # Path to nx-ovlreloader
 RELOADER_DIR := external/nx-ovlreloader
@@ -152,6 +153,7 @@ endif
 all: $(BUILD) reloader
 	@echo "================================================"
 	@echo "Packaging complete build..."
+	@$(PYTHON) $(CURDIR)/scripts/verify_glass_loader.py $(CURDIR)/$(TARGET).nsp
 	@echo "================================================"
 	@rm -rf out/
 	@mkdir -p out/atmosphere/contents/420000000007E51A/flags

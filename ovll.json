@@ -8,7 +8,7 @@
 	"default_cpu_id": 3,
 	"process_category": 0,
 	"is_retail": true,
-	"pool_partition": 2,
+	"pool_partition": 1,
 	"is_64_bit": true,
 	"address_space_type": 1,
 	"filesystem_access": {
@@ -210,6 +210,19 @@
 				"address": "0x57000000",
 				"is_ro": false,
 				"size": "0x01000000",
+				"is_io": true
+			}
+		},
+		{
+			"type": "application_type",
+			"value": 2
+		},
+		{
+			"type": "map",
+			"value": {
+				"address": "0x54200000",
+				"is_ro": false,
+				"size": "0x00080000",
 				"is_io": true
 			}
 		}

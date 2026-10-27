@@ -1,0 +1,37 @@
+name: Build deko3d loader
+on:
+  push:
+    branches: [main]
+    tags: ['*-deko3d']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Build loader and reloader
+        run: |
+          git config --global --add safe.directory '*'
+          make -j2
+          python3 scripts/verify_glass_loader.py ovll.nsp
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('nx-ovlloader.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for p in Path('out').rglob('*'):
+                  if p.is_file():
+                      z.write(p, p.relative_to('out').as_posix())
+          with zipfile.ZipFile('nx-ovlloader.zip') as z:
+              assert z.testzip() is None
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nx-ovlloader-deko3d
+          path: nx-ovlloader.zip
+          if-no-files-found: error
